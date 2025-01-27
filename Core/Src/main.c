@@ -1,6 +1,6 @@
 #include "UART.h"
 
-
+//comment
 char *msg = "Hello World\r\n" ;
 int main(void) {
 
