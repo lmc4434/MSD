@@ -30,34 +30,29 @@ root.grid_columnconfigure(0, weight=1)
 root.grid_columnconfigure(1, weight=1)
 root.grid_columnconfigure(2, weight=1)
 
-ser = serial.Serial('COM3', 9600, timeout=1)  # Added timeout for the read operation
+ser = serial.Serial('COM3', 9600, timeout=1)
 
-# Global variable to track the slider update time
+
 slider_update_timer = None
 
 def send_tilt_angle(val):
-    tilt_value = int(float(val))  # Get the value from the slider
-    message = f"TA:{tilt_value:.2f}\r"  # Format the message as 'TA:<float_value>\r'
+    tilt_value = int(float(val))
+    message = f"TA:{tilt_value:.2f}\r" 
 
-    # Send the message via UART
-    ser.write(message.encode())  # Send over UART
+    ser.write(message.encode()) 
 
-    # Update the tilt angle variable and label display in GUI
+
     tilt_angle_var.current_value = tilt_value
-    tilt_angle_display_var.current_value = tilt_value  # Update the display value
-    tilt_angle_display_label.config(text=f"{tilt_angle_var.current_value:.1f}")  # Update the GUI label
+    tilt_angle_display_var.current_value = tilt_value 
+    tilt_angle_display_label.config(text=f"{tilt_angle_var.current_value:.1f}")
 
-    # Print the message being sent for debugging
     print(f"Sending: {message}")
 
 def on_slider_change(val):
     global slider_update_timer
 
-    # Cancel any previous scheduled send if slider is being moved again
     if slider_update_timer:
         root.after_cancel(slider_update_timer)
-
-    # Schedule to send the tilt angle after 500 milliseconds (0.5 seconds) of no movement
     slider_update_timer = root.after(500, send_tilt_angle, val)
 
 
@@ -66,26 +61,20 @@ def receive_data():
     data_buffer = ""  # Initialize an empty buffer to store the incoming data
 
     while True:
-        # Check if data is available in the UART buffer
         if ser.in_waiting > 0:
-            data = ser.read()  # Read one byte from UART
-
-            # Add the byte data to the buffer (convert byte to string)
+            data = ser.read() 
             data_buffer += data.decode('utf-8', errors='ignore')
 
-            # Process the buffer if a full message (ending with '\r') is received
             if "\r" in data_buffer:
-                # Extract and handle complete messages
-                complete_message = data_buffer.strip()
-                data_buffer = ""  # Reset the buffer after processing
 
-                # Check if the message is properly formatted
+                complete_message = data_buffer.strip()
+                data_buffer = ""  
+
                 if ":" in complete_message:
                     try:
                         id, value = complete_message.split(":")
                         value = float(value)
 
-                        # Handle updates based on the message type
                         if id == "VV":
                             voltage_var.current_value = value
                         elif id == "BP":
