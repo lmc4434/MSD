@@ -31,7 +31,7 @@
 #include "7segment.h"
 #include "control.h"
 
-
+extern TIM_HandleTypeDef htim2;
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -71,6 +71,13 @@
 /* USER CODE END 0 */
 void SystemClock_Config(void);
 
+
+
+void microDelay (uint16_t delay)
+{
+  __HAL_TIM_SET_COUNTER(&htim2, 0);
+  while (__HAL_TIM_GET_COUNTER(&htim2) < delay);
+}
 
 void TIM2_Init(void)
 {
