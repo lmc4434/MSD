@@ -32,8 +32,6 @@ void MX_GPIO_Init(void)
 	  /*Configure GPIO pin Output Level */
 	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2|GPIO_PIN_3, GPIO_PIN_RESET);
 
-	  /*Configure GPIO pin Output Level */
-	  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
 
 	  /*Configure GPIO pin : B1_Pin */
 	  GPIO_InitStruct.Pin = B1_Pin;
