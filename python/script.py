@@ -128,15 +128,15 @@ def generate_window():
     global voltage_display, battery_display, tilt_angle_display_label, unfold_button, mode_button, power_display
 
     # NASA and Psyche logos
-    nasa_img = Image.open("NASA.PNG").resize((100, 100), Image.Resampling.LANCZOS)
-    nasa_photo = ImageTk.PhotoImage(nasa_img)
-    root.nasa_photo = nasa_photo
-    ttk.Label(root, image=nasa_photo).grid(row=0, column=0, padx=10, pady=10, sticky="nw")
+    #nasa_img = Image.open("NASA.PNG").resize((100, 100), Image.Resampling.LANCZOS)
+    #nasa_photo = ImageTk.PhotoImage(nasa_img)
+    #root.nasa_photo = nasa_photo
+    #ttk.Label(root, image=nasa_photo).grid(row=0, column=0, padx=10, pady=10, sticky="nw")
 
-    psyche_img = Image.open("Psyche.PNG").resize((150, 100), Image.Resampling.LANCZOS)
-    psyche_photo = ImageTk.PhotoImage(psyche_img)
-    root.psyche_photo = psyche_photo
-    ttk.Label(root, image=psyche_photo).grid(row=0, column=2, padx=10, pady=10, sticky="ne")
+    #psyche_img = Image.open("Psyche.PNG").resize((150, 100), Image.Resampling.LANCZOS)
+    #psyche_photo = ImageTk.PhotoImage(psyche_img)
+    #root.psyche_photo = psyche_photo
+    #ttk.Label(root, image=psyche_photo).grid(row=0, column=2, padx=10, pady=10, sticky="ne")
 
     ttk.Label(root, text="Psyche 2 Power Supply Control", font=("Arial", 12, "bold")).grid(
         row=0, column=1, padx=10, pady=10, sticky="nsew"
@@ -155,14 +155,14 @@ def generate_window():
     # Tilt slider (adjust to work with integers)
     tilt_slider = ttk.Scale(
         root,
-        from_=-22,
-        to_=22,
+        from_=-180,
+        to_=180,
         orient="horizontal",
         command=on_slider_change,  # Use the new function
     )
     tilt_slider.grid(row=3, column=1, padx=10, pady=10, sticky="nsew")
-    ttk.Label(root, text="-22").grid(row=3, column=0, padx=10, pady=10, sticky="w")
-    ttk.Label(root, text="22").grid(row=3, column=2, padx=10, pady=10, sticky="e")
+    ttk.Label(root, text="-180").grid(row=3, column=0, padx=10, pady=10, sticky="w")
+    ttk.Label(root, text="180").grid(row=3, column=2, padx=10, pady=10, sticky="e")
 
     # Buttons
     ttk.Button(root, text="Activate Compressed Air", command=blow_off_dust).grid(
