@@ -26,13 +26,48 @@
 #include <string.h>
 #include <stdlib.h>
 
+#define DIR_PIN GPIO_PIN_2
+#define DIR_PORT GPIOC
+#define STEP_PIN GPIO_PIN_3
+#define STEP_PORT GPIOC
 
+
+int stepDelay = 1000;
 float voltage_var = 0.0;
 int battery_var = 0;
 int tilt_angle_var = 0;
 char tilt_angle_display_var[20] = "";
 int panel_open = 0;
 int mode = 0;
+
+void microDelay (uint16_t delay)
+{
+  __HAL_TIM_SET_COUNTER(&htim1, 0);
+  while (__HAL_TIM_GET_COUNTER(&htim1) < delay);
+}
+
+void step_from_ang(int tilt_angle_var){
+	  int stopstep;
+
+	  if (angle < 0){
+		  angle = angle * (-1);
+    	  HAL_GPIO_WritePin(DIR_PORT, DIR_PIN, GPIO_PIN_RESET);
+	  }
+	  else{
+
+    	  HAL_GPIO_WritePin(DIR_PORT, DIR_PIN, GPIO_PIN_SET);
+	  }
+	  stopstep = (int)(((double)angle/360.0) * 512.0);
+
+	      for(x=0; x<stopstep; x=x+1)
+	      {
+	        HAL_GPIO_WritePin(STEP_PORT, STEP_PIN, GPIO_PIN_SET);
+	        microDelay(stepDelay);
+	        HAL_GPIO_WritePin(STEP_PORT, STEP_PIN, GPIO_PIN_RESET);
+	        microDelay(stepDelay);
+	      }
+
+}
 
 
 void update_variable_from_header(char* received_string) {
@@ -106,6 +141,8 @@ int run(void) {
 
 
         snprintf(tilt_angle_str, sizeof(tilt_angle_str), "Tilt Angle %d", tilt_angle_var);
+
+        step_from_ang(tilt_angle_var);
 
         UART_SendString(tilt_angle_str);
         UART_SendString("\r\n");
