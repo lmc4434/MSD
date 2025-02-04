@@ -69,6 +69,18 @@ void step_from_ang(int angle){
 }
 
 
+
+void open_panel(int state){
+	if (state == 1){
+		step_from_ang(180);
+	}else if(state == 0){
+		step_from_ang(-180);
+	}else{
+		step_from_ang(0);
+	}
+
+}
+
 void update_variable_from_header(char* received_string) {
     char identifier[3];
     char value_string[20];
@@ -98,6 +110,8 @@ void update_variable_from_header(char* received_string) {
         else if (identifier[0] == 'T' && identifier[1] == 'A') {
 
             tilt_angle_var = atoi(value_string);
+            step_from_ang(tilt_angle_var);
+
 
         }
         else if (identifier[0] == 'T' && identifier[1] == 'D') {
@@ -109,6 +123,7 @@ void update_variable_from_header(char* received_string) {
         else if (identifier[0] == 'P' && identifier[1] == 'O') {
 
             panel_open = atoi(value_string);
+            open_panel(panel_open);
 
         }
         else if (identifier[0] == 'C' && identifier[1] == 'M') {
@@ -129,23 +144,36 @@ int run(void) {
 	char uartBuffer[64];
 
 
+
     while (1) {
 
-    	UART_ReadLine(uartBuffer, 64);
 
-        update_variable_from_header(uartBuffer);
+    	//HAL_SuspendTick();
+    	//HAL_PWREx_EnterSTOP2Mode(PWR_SLEEPENTRY_WFI);
+    	//HAL_ResumeTick();
 
-        char tilt_angle_str[20];
+    	if((USART2->ISR & USART_ISR_RXNE)){
+			UART_ReadLine(uartBuffer, 64);
+    		//HAL_UART_Receive_IT(&huart2, uartBuffer, 5);
+
+			update_variable_from_header(uartBuffer);
+
+			char tilt_angle_str[20];
 
 
-        snprintf(tilt_angle_str, sizeof(tilt_angle_str), "Tilt Angle %d", tilt_angle_var);
+			snprintf(tilt_angle_str, sizeof(tilt_angle_str), "Tilt Angle %d", tilt_angle_var);
 
-        UART_SendString(tilt_angle_str);
-        step_from_ang(tilt_angle_var);
+			UART_SendString(tilt_angle_str);
 
-        UART_SendString(tilt_angle_str);
-        UART_SendString("\r\n");
+			UART_SendString(tilt_angle_str);
+			UART_SendString("\r\n");
+    	}
+
+    	//HAL_SuspendTick();
+    	//HAL_PWREx_EnterSTOP2Mode(PWR_SLEEPENTRY_WFI);
+    	//HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);
     }
+
 
 }
 
