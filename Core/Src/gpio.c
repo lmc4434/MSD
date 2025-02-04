@@ -152,3 +152,12 @@ int check_button3(void)
 	return 0;	// For no button press
 }
 
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  if(GPIO_Pin == GPIO_PIN_13)
+  {
+      SystemClock_Config ();
+      HAL_ResumeTick();
+  }
+}
+
