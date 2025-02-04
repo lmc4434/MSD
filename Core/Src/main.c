@@ -29,6 +29,7 @@
 #include "time.h"
 #include "gpio.h"
 #include "7segment.h"
+#include "timers.h"
 #include "control.h"
 
 extern TIM_HandleTypeDef htim2;
@@ -110,6 +111,7 @@ int main(void)
     TIM2_Init();
     MFS_init();
 
+
     run();
     while (1) {}
 }
@@ -177,6 +179,7 @@ void SystemClock_Config(void)
 /* USER CODE BEGIN 4 */
 
 
+
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
@@ -211,6 +214,7 @@ void Error_Handler(void)
   }
   /* USER CODE END Error_Handler_Debug */
 }
+
 
 #ifdef  USE_FULL_ASSERT
 /**
