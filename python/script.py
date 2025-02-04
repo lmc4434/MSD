@@ -107,6 +107,9 @@ def toggle_panels():
     panel_open.current_value = 1.0 if panel_open.current_value == 0.0 else 0.0
     unfold_button.config(text="Close Panels" if panel_open.current_value else "Open Panels")
     print("Panels Opened." if panel_open.current_value else "Panels Closed.")
+    message = f"PO:{panel_open.current_value:.2f}\r"
+
+    ser.write(message.encode())
 
 def toggle_mode():
     mode.current_value = 1.0 if mode.current_value == 0.0 else 0.0
