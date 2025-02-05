@@ -29,9 +29,10 @@
 #include "time.h"
 #include "gpio.h"
 #include "7segment.h"
+#include "timers.h"
 #include "control.h"
 
-
+extern TIM_HandleTypeDef htim2;
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -72,6 +73,13 @@
 void SystemClock_Config(void);
 
 
+
+void microDelay (uint16_t delay)
+{
+  __HAL_TIM_SET_COUNTER(&htim2, 0);
+  while (__HAL_TIM_GET_COUNTER(&htim2) < delay);
+}
+
 void TIM2_Init(void)
 {
     RCC -> APB1ENR1 |= RCC_APB1ENR1_TIM2EN;            // Enable TIM2 clock
@@ -102,6 +110,7 @@ int main(void)
     UART_Init();
     TIM2_Init();
     MFS_init();
+
 
     run();
     while (1) {}
@@ -170,6 +179,7 @@ void SystemClock_Config(void)
 /* USER CODE BEGIN 4 */
 
 
+
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
@@ -204,6 +214,7 @@ void Error_Handler(void)
   }
   /* USER CODE END Error_Handler_Debug */
 }
+
 
 #ifdef  USE_FULL_ASSERT
 /**
