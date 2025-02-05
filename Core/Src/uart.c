@@ -1,4 +1,5 @@
 #include <uart.h>
+#include "FreeRTOS.h"
 
 
 // Custom Functions
@@ -8,6 +9,8 @@ void UART_SendChar(char c);
 char UART_ReceiveChar();
 void UART_Delay(uint32_t us);
 void UART_Write(char *str);
+
+
 
 
 // UART Ports:
@@ -165,25 +168,31 @@ void UART_ReadLine(char *buffer, int bufferSize)
     char c;
 
     while (1) {
+        // Check if data is available without blocking
         if (USART2->ISR & USART_ISR_RXNE) {
             c = UART_ReceiveChar();
 
+            // Handle backspace
             if ((c == 8 || c == 127) && i > 0) {
                 buffer[--i] = '\0';
-                UART_SendChar(c);
+                UART_SendChar(c);  // Echo back
             }
 
+            // Handle valid character
             else if (c != '\r' && i < bufferSize - 1) {
                 buffer[i++] = c;
-                UART_SendChar(c);
+                UART_SendChar(c);  // Echo back
             }
 
+            // Handle carriage return (end of line)
             else if (c == '\r') {
                 buffer[i] = '\0';
-                UART_SendString("\n\r");
+                UART_SendString("\n\r");  // Send newline
                 break;
             }
         }
-    }
 
+        // Add a small delay to allow other tasks to run
+        vTaskDelay(pdMS_TO_TICKS(10));  // Small delay (10ms) to yield control
+    }
 }
