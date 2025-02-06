@@ -84,8 +84,13 @@ void check_and_send_updates(void *argument) {
             UART_SendString(uartBuffer);
             prev_power_generation = power_generation;
         }
+        if (tilt_angle_var != prev_tilt_angle_var) {
+            snprintf(uartBuffer, sizeof(uartBuffer), "TA:%d\r\n", tilt_angle_var);
+            UART_SendString(uartBuffer);
+            prev_tilt_angle_var = tilt_angle_var;
+        }
 
-        vTaskDelay(pdMS_TO_TICKS(1));  // Ensure task yields periodically
+        vTaskDelay(pdMS_TO_TICKS(1500));  // Ensure task yields periodically
     }
 }
 
@@ -93,6 +98,7 @@ void update_variable_from_header(void *argument) {
     char identifier[3];
     char value_string[20];
     char received_string[64];
+    char uartBuffer[64];
 
     while (1) {
         memset(received_string, 0, sizeof(received_string));  // Clear buffer
@@ -116,23 +122,20 @@ void update_variable_from_header(void *argument) {
                 } else if (strcmp(identifier, "TA") == 0) {
                     tilt_angle_var = atoi(value_string);
                     step_from_ang(tilt_angle_var);
-                } else if (strcmp(identifier, "TD") == 0) {
-                    strncpy(tilt_angle_display_var, value_string, sizeof(tilt_angle_display_var) - 1);
-                    tilt_angle_display_var[sizeof(tilt_angle_display_var) - 1] = '\0';
                 } else if (strcmp(identifier, "PO") == 0) {
                     panel_open = atoi(value_string);
                     open_panel(panel_open);
                 } else if (strcmp(identifier, "CM") == 0) {
                     mode = atoi(value_string);
                 } else {
-                    UART_SendString("Unknown Identifier\r\n");
+                    UART_SendString("Unknown Identifier100\r\n");
                 }
             } else {
-                UART_SendString("Invalid Command Format\r\n");
+                UART_SendString("Invalid Command Format100\r\n");
             }
         }
 
-        vTaskDelay(pdMS_TO_TICKS(100));  // Prevent task blocking forever
+        vTaskDelay(pdMS_TO_TICKS(1));  // Prevent task blocking forever
     }
 }
 
@@ -177,9 +180,8 @@ void open_panel(int state){
 
 void run(void) {
 
-    xTaskCreate(update_variable_from_header, "Update", 256, NULL, 3, &UpdateFromHeaderThread_Handler);
-    //xTaskCreate(generate_random_values, "RandomVals", 256, NULL, 1, &UpdateandSendThread_Handler);
-    xTaskCreate(check_and_send_updates, "CheckandSend", 256, NULL, 1, &UpdateandSendThread_Handler);
+    xTaskCreate(update_variable_from_header, "Update", 256, NULL, 1, &UpdateFromHeaderThread_Handler);
+    xTaskCreate(check_and_send_updates, "CheckandSend", 256, NULL, 2, &UpdateandSendThread_Handler);
 
     vTaskStartScheduler();
 }
