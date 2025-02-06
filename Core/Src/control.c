@@ -127,7 +127,15 @@ void update_variable_from_header(void *argument) {
                     open_panel(panel_open);
                 } else if (strcmp(identifier, "CM") == 0) {
                     mode = atoi(value_string);
-                } else {
+                } else if (strcmp(identifier, "CD") == 0) {
+                    //Run the function
+                	int i = 1; //placeholder so no tnull
+                	i +=1;
+                } else if (strcmp(identifier, "ST") == 0) {
+                    //Run the function
+                	int i = 1; //placeholder so no tnull
+                	i +=1;
+                }else {
                     UART_SendString("Unknown Identifier100\r\n");
                 }
             } else {
