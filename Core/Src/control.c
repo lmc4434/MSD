@@ -136,10 +136,10 @@ void update_variable_from_header(void *argument) {
                 	int i = 1; //placeholder so no tnull
                 	i +=1;
                 }else {
-                    UART_SendString("Unknown Identifier100\r\n");
+                    UART_SendString("Unknown Identifier\r\n");
                 }
             } else {
-                UART_SendString("Invalid Command Format100\r\n");
+                UART_SendString("Invalid Command Format\r\n");
             }
         }
 
@@ -168,7 +168,7 @@ void step_from_ang(int angle){
 	        HAL_GPIO_WritePin(STEP_PORT, STEP_PIN, GPIO_PIN_SET);
 	        microDelay(stepDelay);
 	        HAL_GPIO_WritePin(STEP_PORT, STEP_PIN, GPIO_PIN_RESET);
-	      microDelay(stepDelay);
+	        microDelay(stepDelay);
 
 	      }
 
