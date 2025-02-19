@@ -25,6 +25,8 @@
 #define DIR_PORT GPIOC
 #define STEP_PIN GPIO_PIN_3
 #define STEP_PORT GPIOC
+#define EN_STEP_PIN GPIO_PIN_4
+#define EN_STEP_PORT GPIOC
 
 int stepDelay = 10000;
 
@@ -151,6 +153,8 @@ void step_from_ang(int angle){
       int x;
 	  int stopstep;
 
+	  HAL_GPIO_WritePin(EN_STEP_PORT, EN_STEP_PIN, GPIO_PIN_SET);
+
 	  if (angle < 0){
 		  angle = angle * (-1);
     	  HAL_GPIO_WritePin(DIR_PORT, DIR_PIN, GPIO_PIN_RESET);
@@ -160,7 +164,7 @@ void step_from_ang(int angle){
     	  HAL_GPIO_WritePin(DIR_PORT, DIR_PIN, GPIO_PIN_SET);
 	  }
 
-	  stopstep = (int)(((double)angle/360.0) * 512.0);
+	  stopstep = 60*(int)(((double)angle/360.0) * 1600.0);
 
 	      for(x=0; x<stopstep; x=x+1)
 	      {
@@ -172,7 +176,11 @@ void step_from_ang(int angle){
 
 	      }
 
+
+	  HAL_GPIO_WritePin(EN_STEP_PORT, EN_STEP_PIN, GPIO_PIN_RESET);
+
 }
+
 
 
 void open_panel(int state){
