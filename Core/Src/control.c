@@ -21,14 +21,28 @@
 #include <errno.h>
 #include <string.h>
 
-#define DIR_PIN GPIO_PIN_2
-#define DIR_PORT GPIOC
-#define STEP_PIN GPIO_PIN_3
-#define STEP_PORT GPIOC
-#define EN_STEP_PIN GPIO_PIN_4
-#define EN_STEP_PORT GPIOC
+#define TILT_DIR_PIN GPIO_PIN_4 		//A
+#define TILT_DIR_PORT GPIOB				//A
+#define TILT_STEP_PIN GPIO_PIN_5		//B
+#define TILT_STEP_PORT GPIOB			//B
+#define TILT_EN_PIN GPIO_PIN_3			//En
+#define TILT_EN_PORT GPIOB				//En
 
-int stepDelay = 10000;
+#define PANEL_DIR_PIN GPIO_PIN_9 		//A
+#define PANEL_DIR_PORT GPIOA			//A
+#define PANEL_STEP_PIN GPIO_PIN_8		//B
+#define PANEL_STEP_PORT GPIOA			//B
+#define PANEL_EN_PIN GPIO_PIN_10		//En
+#define PANEL_EN_PORT GPIOB				//En
+#define PANEL_SW_OPEN_PIN GPIO_PIN_2
+#define PANEL_SW_OPEN_PORT GPIOC
+#define PANEL_SW_CLOSE_PIN GPIO_PIN_3
+#define PANEL_SW_CLOSE_PORT GPIOC
+
+#define DUST_PIN GPIO_PIN_10
+#define DUST_PORT GPIOA
+
+int stepDelay = 100;
 
 float Solar_Panel_Voltage = 0.0;
 int battery_var = 0;
@@ -53,6 +67,7 @@ void step_from_ang(int angle);
 void open_panel(int state);
 void update_variable_from_header(void *argument);
 void run(void);
+void clear_dust(void);
 
 void generate_random_values() {
 
@@ -130,9 +145,7 @@ void update_variable_from_header(void *argument) {
                 } else if (strcmp(identifier, "CM") == 0) {
                     mode = atoi(value_string);
                 } else if (strcmp(identifier, "CD") == 0) {
-                    //Run the function
-                	int i = 1; //placeholder so no tnull
-                	i +=1;
+                	clear_dust();
                 } else if (strcmp(identifier, "ST") == 0) {
                     //Run the function
                 	int i = 1; //placeholder so no tnull
@@ -153,31 +166,39 @@ void step_from_ang(int angle){
       int x;
 	  int stopstep;
 
-	  HAL_GPIO_WritePin(EN_STEP_PORT, EN_STEP_PIN, GPIO_PIN_SET);
+	  HAL_GPIO_WritePin(TILT_EN_PORT, TILT_EN_PIN, GPIO_PIN_SET);
 
 	  if (angle < 0){
 		  angle = angle * (-1);
-    	  HAL_GPIO_WritePin(DIR_PORT, DIR_PIN, GPIO_PIN_RESET);
+    	  HAL_GPIO_WritePin(TILT_DIR_PORT, TILT_DIR_PIN, GPIO_PIN_RESET);
 	  }
 	  else{
 
-    	  HAL_GPIO_WritePin(DIR_PORT, DIR_PIN, GPIO_PIN_SET);
+    	  HAL_GPIO_WritePin(TILT_DIR_PORT, TILT_DIR_PIN, GPIO_PIN_SET);
 	  }
 
-	  stopstep = 60*(int)(((double)angle/360.0) * 1600.0);
+
+      microDelay(stepDelay);
+      microDelay(stepDelay);
+
+
+	  stopstep = 60*(int)(((double)angle/360.0) * 10000.0);
 
 	      for(x=0; x<stopstep; x=x+1)
 	      {
 
-	        HAL_GPIO_WritePin(STEP_PORT, STEP_PIN, GPIO_PIN_SET);
+	        HAL_GPIO_WritePin(TILT_STEP_PORT, TILT_STEP_PIN, GPIO_PIN_SET);
 	        microDelay(stepDelay);
-	        HAL_GPIO_WritePin(STEP_PORT, STEP_PIN, GPIO_PIN_RESET);
+	        HAL_GPIO_WritePin(TILT_STEP_PORT, TILT_STEP_PIN, GPIO_PIN_RESET);
 	        microDelay(stepDelay);
 
 	      }
 
 
-	  HAL_GPIO_WritePin(EN_STEP_PORT, EN_STEP_PIN, GPIO_PIN_RESET);
+	  HAL_GPIO_WritePin(TILT_EN_PORT, TILT_EN_PIN, GPIO_PIN_RESET);
+	  HAL_GPIO_WritePin(TILT_DIR_PORT, TILT_DIR_PIN, GPIO_PIN_RESET);
+      HAL_GPIO_WritePin(TILT_STEP_PORT, TILT_STEP_PIN, GPIO_PIN_RESET);
+
 
 }
 
@@ -185,13 +206,75 @@ void step_from_ang(int angle){
 
 void open_panel(int state){
 	if (state == 1){
-		step_from_ang(180);
+
+		HAL_GPIO_WritePin(PANEL_EN_PORT, PANEL_EN_PIN, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(PANEL_DIR_PORT, PANEL_DIR_PIN, GPIO_PIN_SET);
+
+        UART_SendString("INITAL\r\n");
+
+	    microDelay(stepDelay);
+	    microDelay(stepDelay);
+
+		while(HAL_GPIO_ReadPin(PANEL_SW_CLOSE_PORT, PANEL_SW_CLOSE_PIN) == GPIO_PIN_SET){
+
+            UART_SendString("LOOP\r\n");
+
+	        HAL_GPIO_WritePin(PANEL_STEP_PORT, PANEL_STEP_PIN, GPIO_PIN_SET);
+	        microDelay(stepDelay);
+	        HAL_GPIO_WritePin(PANEL_STEP_PORT, PANEL_STEP_PIN, GPIO_PIN_RESET);
+	        microDelay(stepDelay);
+
+		}
+
+        UART_SendString("END\r\n");
+
+		HAL_GPIO_WritePin(PANEL_EN_PORT, PANEL_EN_PIN, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(PANEL_DIR_PORT, PANEL_DIR_PIN, GPIO_PIN_RESET);
+	    HAL_GPIO_WritePin(PANEL_STEP_PORT, PANEL_STEP_PIN, GPIO_PIN_RESET);
+
 	}else if(state == 0){
-		step_from_ang(-180);
+		HAL_GPIO_WritePin(PANEL_EN_PORT, PANEL_EN_PIN, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(PANEL_DIR_PORT, PANEL_DIR_PIN, GPIO_PIN_RESET);
+
+        UART_SendString("INITAL\r\n");
+
+	    microDelay(stepDelay);
+	    microDelay(stepDelay);
+
+		while(HAL_GPIO_ReadPin(PANEL_SW_CLOSE_PORT, PANEL_SW_CLOSE_PIN) == GPIO_PIN_SET){
+
+            //UART_SendString("LOOP\r\n");
+
+	        HAL_GPIO_WritePin(PANEL_STEP_PORT, PANEL_STEP_PIN, GPIO_PIN_SET);
+	        microDelay(stepDelay);
+	        HAL_GPIO_WritePin(PANEL_STEP_PORT, PANEL_STEP_PIN, GPIO_PIN_RESET);
+	        microDelay(stepDelay);
+
+		}
+
+        UART_SendString("END\r\n");
+
+		HAL_GPIO_WritePin(PANEL_EN_PORT, PANEL_EN_PIN, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(PANEL_DIR_PORT, PANEL_DIR_PIN, GPIO_PIN_RESET);
+	    HAL_GPIO_WritePin(PANEL_STEP_PORT, PANEL_STEP_PIN, GPIO_PIN_RESET);
 	}else{
-		step_from_ang(0);
+		/*if(HAL_GPIO_ReadPin(PANEL_SW_CLOSE_PORT, PANEL_SW_CLOSE_PIN) == GPIO_PIN_RESET){
+
+	        UART_SendString("LIMIT SWITCH RESET\r\n");
+		}
+		else if((HAL_GPIO_ReadPin(PANEL_SW_CLOSE_PORT, PANEL_SW_CLOSE_PIN) == GPIO_PIN_SET)){
+			UART_SendString("LIMIT SWITCH SET\r\n");
+		}
+		else{
+			 UART_SendString("UNKNOWN\r\n");
+		}*/
 	}
 
+}
+
+void clear_dust(void){
+	 HAL_GPIO_WritePin(DUST_PORT, DUST_PIN, GPIO_PIN_SET);
+	 HAL_GPIO_WritePin(DUST_PORT, DUST_PIN, GPIO_PIN_RESET);
 }
 
 void run(void) {
