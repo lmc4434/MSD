@@ -80,35 +80,20 @@ xTaskHandle UpdateandSendThread_Handler;
 xTaskHandle UpdateFromHeaderThread_Handler;
 xTaskHandle HillClimb_Handler;
 
-void generate_random_values();
 void check_and_send_updates(void *argument);
 void step_from_ang(int angle);
 void open_panel(int state);
 void tilt_panel(int angle);
 void update_variable_from_header(void *argument);
 void run(void);
-
-void generate_random_values() {
-
-	Solar_Panel_Voltage = ((float)(rand() % 1200)) / 100.0;  // Random voltage 0.0 to 30.0 volts
-	battery_var = rand() % 101;                              // Random battery percentage 0 to 100
-	//power_generation = rand() % 20;                         // Random power generation 0 to 500 watts
-
-    // Use the test array for power generation values
-    /*if (test_index < test_length) {
-        power_generation = test_power_outputs[test_index++];
-    } else {
-        // Optionally wrap around or stop testing
-        test_index = 0;  // Reset for continuous testing or set to specific condition to stop
-    }*/
+void clear_dust(void);
+void send_values(void);
 
 
-}
 
 
 void check_and_send_updates(void *argument) {
     while (1) {
-    	generate_random_values();
         char uartBuffer[64];
 
         if (Solar_Panel_Voltage != prev_Solar_Panel_Voltage) {
@@ -142,6 +127,23 @@ void check_and_send_updates(void *argument) {
         vTaskDelay(pdMS_TO_TICKS(1500));  // Ensure task yields periodically
     }
 }
+
+
+void send_values(){
+    char uartBuffer[64];
+    snprintf(uartBuffer, sizeof(uartBuffer), "VV:%.2f\r\n", Solar_Panel_Voltage);
+    prev_Solar_Panel_Voltage = Solar_Panel_Voltage;
+    snprintf(uartBuffer, sizeof(uartBuffer), "BP:%d\r\n", battery_var);
+    prev_battery_var = battery_var;
+    snprintf(uartBuffer, sizeof(uartBuffer), "PG:%d\r\n", power_generation);
+    UART_SendString(uartBuffer);
+    prev_power_generation = power_generation;
+    snprintf(uartBuffer, sizeof(uartBuffer), "TA:%d\r\n", tilt_angle_var);
+    UART_SendString(uartBuffer);
+    prev_tilt_angle_var = tilt_angle_var;
+
+}
+
 
 void update_variable_from_header(void *argument) {
     char identifier[3];
@@ -178,7 +180,10 @@ void update_variable_from_header(void *argument) {
                     mode = atoi(value_string);
                 } else if (strcmp(identifier, "ST") == 0) {
                 	solar_tracking = atoi(value_string);
-
+                } else if (strcmp(identifier, "CD") == 0) {
+                	clear_dust();
+                } else if (strcmp(identifier, "SU") == 0) {
+                	send_values();
 
                 }else {
                     UART_SendString("Unknown Identifier\r\n");
