@@ -15,10 +15,13 @@ voltage_var = DataVariable()
 battery_var = DataVariable()
 tilt_angle_var = DataVariable()
 tilt_angle_display_var = DataVariable()
+panel_angle_var = DataVariable()
+panel_angle_display_var = DataVariable()
 panel_open = DataVariable(initial_value=0.0)
 mode = DataVariable(initial_value=0.0)
 power_generation = DataVariable()
 tiltfinished = DataVariable()
+openfinished = DataVariable
 sent = 0
 in_admin_screen = False
 data_initialized = False
@@ -98,6 +101,10 @@ def receive_data():
                             print("Clearing Dust Run")
                         elif id == "FI":
                             tiltfinished.current_value = 0
+                        elif id == "FP":
+                            openfinished.current_value = 0
+                        elif id == "PA":
+                            panel_angle_var.current_value = value
 
                     except ValueError:
                         print("Invalid value format in message")
@@ -109,10 +116,12 @@ def blow_off_dust():
     send_value("CD", 1.0)
 
 def toggle_panels():
+
     panel_open.current_value = 1.0 if panel_open.current_value == 0.0 else 0.0
     unfold_button.config(text="Close Panels" if panel_open.current_value else "Open Panels")
     update_terminal("Panels Opened." if panel_open.current_value else "Panels Closed.")
-    send_value("PO", 180)
+    send_value("PO", panel_open.current_value)
+
 
 def toggle_mode():
     mode.current_value = 1.0 if mode.current_value == 0.0 else 0.0
@@ -198,15 +207,33 @@ def show_admin_login():
     password_entry.pack(pady=5)
     tk.Button(login_window, text="Submit", command=validate_password).pack(pady=10)
 
+def update_admin_labels():
+    if not in_admin_screen:
+        return
+    tilt_angle_label.config(text=f"Tilt Angle: {tilt_angle_var.current_value:.2f}")
+    panel_angle_label.config(text=f"Panel Angle: {panel_angle_var.current_value:.2f}")
+    root.after(1000, update_admin_labels)
 
 def show_admin_screen():
     global in_admin_screen
+
     in_admin_screen = True
 
     for widget in root.winfo_children():
         widget.destroy()
-
+    global tilt_angle_label, panel_angle_label
     tk.Label(root, text="ADMIN PANEL", font=("Arial", 20, "bold"), fg="red", bg="#1D1F21").pack(pady=20)
+
+    tilt_angle_label = tk.Label(root, text=f"Tilt Angle: {tilt_angle_var.current_value:.2f}",
+                                fg="cyan", bg="#1D1F21", font=("Arial", 14))
+    tilt_angle_label.pack()
+
+    panel_angle_label = tk.Label(root, text=f"Panel Angle: {panel_angle_var.current_value:.2f}",
+                                 fg="cyan", bg="#1D1F21", font=("Arial", 14))
+    panel_angle_label.pack()
+
+    # Start the periodic update loop
+    update_admin_labels()
 
     def graceful_shutdown():
         tilt_angle_display_var.current_value = 0
@@ -229,17 +256,24 @@ def show_admin_screen():
         tilt_angle_display_var.current_value = new_angle
         send_value("TA", new_angle)
 
-    def set_panel_open(open_state):
-        panel_open.current_value = 1.0 if open_state else 0.0
-        send_value("PO", 180 if open_state else 0)
-        update_terminal(f"Panels {'Opened' if open_state else 'Closed'} via Jog")
+    def panel_manual_tilt_left():
+        new_angle = max(0, panel_angle_var.current_value - 1)
+        panel_angle_var.current_value = new_angle
+        panel_angle_display_var.current_value = new_angle
+        send_value("PA", new_angle)
+
+    def panel_manual_tilt_right():
+        new_angle = min(64, panel_angle_var.current_value + 1)
+        panel_angle_var.current_value = new_angle
+        panel_angle_display_var.current_value = new_angle
+        send_value("PA", new_angle)
 
     buttons = [
         ("Graceful Shutdown", graceful_shutdown),
         ("Tilt Left ⬅️", manual_tilt_left),
         ("Tilt Right ➡️", manual_tilt_right),
-        ("Jog Panels Open", lambda: [set_panel_open(True)]),
-        ("Jog Panels Closed", lambda: [set_panel_open(False)]),
+        ("Jog Panels Open ", panel_manual_tilt_right),
+        ("Jog Panels Closed ", panel_manual_tilt_left),
         ("Sync Microcontroller and GUI", lambda: send_value("SU", 0.0)),
         ("Return to Main Screen", lambda: [generate_window(), update_gui()])
 
