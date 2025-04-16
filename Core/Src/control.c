@@ -87,7 +87,7 @@ void step_from_ang(int angle);
 void open_panel(int state);
 void open_panel_angle(int angle);
 void step_from_panel_ang(int angle);
-void tilt_panel(int angle);
+void tilt_panel(int angle, int in_tracking);
 void update_variable_from_header(void *argument);
 void run(void);
 void clear_dust(void);
@@ -141,6 +141,7 @@ void check_and_send_updates(void *argument) {
 
 void send_values(){
     char uartBuffer[64];
+    solar_tracking = 0;
     snprintf(uartBuffer, sizeof(uartBuffer), "VV:%.2f\r\n", Solar_Panel_Voltage);
     prev_Solar_Panel_Voltage = Solar_Panel_Voltage;
     snprintf(uartBuffer, sizeof(uartBuffer), "BP:%d\r\n", battery_var);
@@ -157,6 +158,8 @@ void send_values(){
     snprintf(uartBuffer, sizeof(uartBuffer), "PO:%d\r\n", panel_open);
     UART_SendString(uartBuffer);
     snprintf(uartBuffer, sizeof(uartBuffer), "CM:%d\r\n", mode);
+    UART_SendString(uartBuffer);
+	snprintf(uartBuffer, sizeof(uartBuffer), "FI:%d\r\n", 0);
     UART_SendString(uartBuffer);
 
 
@@ -190,7 +193,7 @@ void update_variable_from_header(void *argument) {
                     battery_var = atoi(value_string);
                 } else if (strcmp(identifier, "TA") == 0) {
                     tilt_angle_var = atoi(value_string);
-                    tilt_panel(tilt_angle_var);
+                    tilt_panel(tilt_angle_var, 0);
                 } else if (strcmp(identifier, "PA") == 0) {
                 	panel_angle_var = atoi(value_string);
                     open_panel_angle(panel_angle_var);
@@ -220,14 +223,18 @@ void update_variable_from_header(void *argument) {
 }
 
 void automode(void){
+
+
 	microDelay(10000);
 
+	clear_dust();
+	solar_tracking = 1;
 	char uartBuffer[64];
-    snprintf(uartBuffer, sizeof(uartBuffer), "FI:%d\r\n", 0);
-    UART_SendString(uartBuffer);
+	snprintf(uartBuffer, sizeof(uartBuffer), "FI:%d\r\n", 0);
+	UART_SendString(uartBuffer);
 }
 
-void tilt_panel(int dest_angle){
+void tilt_panel(int dest_angle, int in_tracking){
 	if (dest_angle < -22){
 		dest_angle = -22;
 	}else if (dest_angle > 22){
@@ -240,9 +247,12 @@ void tilt_panel(int dest_angle){
 	tilt_angle_var = current_angle;
 
 	step_from_ang(angle_moved);
-	char uartBuffer[64];
-    snprintf(uartBuffer, sizeof(uartBuffer), "FI:%d\r\n", 0);
-    UART_SendString(uartBuffer);
+
+	if (!in_tracking){
+		char uartBuffer[64];
+		snprintf(uartBuffer, sizeof(uartBuffer), "FI:%d\r\n", 0);
+		UART_SendString(uartBuffer);
+	}
 
 }
 
@@ -403,7 +413,7 @@ void hill_climb_for_optimal_tilt(void *argument) {
 
 	        if (solar_tracking == 1) {
 	            last_angle = tilt_angle_var;
-	            tilt_panel(tilt_angle_var + (5 * direction));
+	            tilt_panel(tilt_angle_var + (5 * direction), 1);
 
 	            char uartBuffer[64];
 	            snprintf(uartBuffer, sizeof(uartBuffer), "Line 367: %i ", tilt_angle_var + (5 * direction));
