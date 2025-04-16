@@ -35,9 +35,7 @@
 #define PANEL_STEP_PORT GPIOA			//B
 #define PANEL_EN_PIN GPIO_PIN_10		//En
 #define PANEL_EN_PORT GPIOB				//En
-#define PANEL_SW_OPEN_PIN GPIO_PIN_2
-#define PANEL_SW_OPEN_PORT GPIOC
-#define PANEL_SW_CLOSE_PIN GPIO_PIN_3
+#define PANEL_SW_CLOSE_PIN GPIO_PIN_7
 #define PANEL_SW_CLOSE_PORT GPIOC
 
 #define DUST_PIN GPIO_PIN_10
@@ -46,7 +44,7 @@
 #define TILT_STEP_ANGLE 5
 
 int tiltDelay = 550;
-int openDelay = 1000;
+int openDelay = 400;
 
 extern ADC_HandleTypeDef hadc1;
 uint16_t value_adc;
@@ -57,12 +55,15 @@ int battery_var = 0;
 int power_generation = 0;
 int solar_tracking = 0;
 int angle_moved = 0;
+int panel_angle_moved = 0;
+int panel_angle_var = 0;
 
 float prev_Solar_Panel_Voltage = 0.0;
 int prev_battery_var = 0;
 int prev_power_generation = 0;
 int prev_tilt_angle_var = 0;
 int prev_solar_tracking = 0;
+int prev_panel_angle_var = 0;
 
 int test_index = 0;
 int test_power_outputs[] = {100, 150, 200, 250, 300, 250, 200, 150, 100};  // Simulated power outputs
@@ -71,10 +72,11 @@ int test_length = sizeof(test_power_outputs) / sizeof(test_power_outputs[0]);  /
 
 int tilt_angle_var = 0;
 char tilt_angle_display_var[20] = "";
-int panel_open = 0;
 int mode = 0;
+int panel_open = 0;
 
 int current_angle = 0;
+int current_panel_angle = 0;
 
 xTaskHandle UpdateandSendThread_Handler;
 xTaskHandle UpdateFromHeaderThread_Handler;
@@ -83,11 +85,14 @@ xTaskHandle HillClimb_Handler;
 void check_and_send_updates(void *argument);
 void step_from_ang(int angle);
 void open_panel(int state);
+void open_panel_angle(int angle);
+void step_from_panel_ang(int angle);
 void tilt_panel(int angle);
 void update_variable_from_header(void *argument);
 void run(void);
 void clear_dust(void);
 void send_values(void);
+void automode(void);
 
 
 
@@ -118,6 +123,11 @@ void check_and_send_updates(void *argument) {
             UART_SendString(uartBuffer);
             prev_tilt_angle_var = tilt_angle_var;
         }
+        if (panel_angle_var != prev_panel_angle_var) {
+            snprintf(uartBuffer, sizeof(uartBuffer), "PA:%d\r\n", panel_angle_var);
+            UART_SendString(uartBuffer);
+            prev_panel_angle_var = panel_angle_var;
+        }
         if (solar_tracking != prev_solar_tracking) {
             snprintf(uartBuffer, sizeof(uartBuffer), "ST:%d\r\n", solar_tracking);
             UART_SendString(uartBuffer);
@@ -141,6 +151,14 @@ void send_values(){
     snprintf(uartBuffer, sizeof(uartBuffer), "TA:%d\r\n", tilt_angle_var);
     UART_SendString(uartBuffer);
     prev_tilt_angle_var = tilt_angle_var;
+    snprintf(uartBuffer, sizeof(uartBuffer), "PA:%d\r\n", panel_angle_var);
+    UART_SendString(uartBuffer);
+    prev_panel_angle_var = panel_angle_var;
+    snprintf(uartBuffer, sizeof(uartBuffer), "PO:%d\r\n", panel_open);
+    UART_SendString(uartBuffer);
+    snprintf(uartBuffer, sizeof(uartBuffer), "CM:%d\r\n", mode);
+    UART_SendString(uartBuffer);
+
 
 }
 
@@ -173,11 +191,15 @@ void update_variable_from_header(void *argument) {
                 } else if (strcmp(identifier, "TA") == 0) {
                     tilt_angle_var = atoi(value_string);
                     tilt_panel(tilt_angle_var);
+                } else if (strcmp(identifier, "PA") == 0) {
+                	panel_angle_var = atoi(value_string);
+                    open_panel_angle(panel_angle_var);
                 } else if (strcmp(identifier, "PO") == 0) {
                     panel_open = atoi(value_string);
                     open_panel(panel_open);
                 } else if (strcmp(identifier, "CM") == 0) {
-                    mode = atoi(value_string);
+                	mode = atoi(value_string);
+                    automode();
                 } else if (strcmp(identifier, "ST") == 0) {
                 	solar_tracking = atoi(value_string);
                 } else if (strcmp(identifier, "CD") == 0) {
@@ -195,6 +217,14 @@ void update_variable_from_header(void *argument) {
 
         vTaskDelay(pdMS_TO_TICKS(1));  // Prevent task blocking forever
     }
+}
+
+void automode(void){
+	microDelay(10000);
+
+	char uartBuffer[64];
+    snprintf(uartBuffer, sizeof(uartBuffer), "FI:%d\r\n", 0);
+    UART_SendString(uartBuffer);
 }
 
 void tilt_panel(int dest_angle){
@@ -216,11 +246,30 @@ void tilt_panel(int dest_angle){
 
 }
 
+void open_panel_angle(int dest_angle){
+	if (dest_angle < 0){
+		dest_angle = 0;
+	}else if (dest_angle > 64){
+		dest_angle = 64;
+	}
+
+
+	panel_angle_moved = dest_angle - current_panel_angle;
+	current_panel_angle = dest_angle;
+	panel_angle_var = current_panel_angle;
+
+	step_from_panel_ang(panel_angle_moved);
+	char uartBuffer[64];
+    snprintf(uartBuffer, sizeof(uartBuffer), "FI:%d\r\n", 0);
+    UART_SendString(uartBuffer);
+
+}
+
+
 void step_from_ang(int angle){
       int x;
 	  int stopstep = 0;
-		char uartBuffer[64];
-
+	  char uartBuffer[64];
 
 
 	  HAL_GPIO_WritePin(TILT_EN_PORT, TILT_EN_PIN, GPIO_PIN_SET);
@@ -254,48 +303,58 @@ void step_from_ang(int angle){
 
 }
 
+void step_from_panel_ang(int angle){
+      int x;
+	  int stopstep = 0;
+	  char uartBuffer[64];
+
+
+
+	  HAL_GPIO_WritePin(PANEL_EN_PORT, PANEL_EN_PIN, GPIO_PIN_SET);
+
+	  if (angle < 0){
+		  angle = angle * (-1);
+    	  HAL_GPIO_WritePin(PANEL_DIR_PORT, PANEL_DIR_PIN, GPIO_PIN_RESET);
+	  }
+	  else{
+    	  HAL_GPIO_WritePin(PANEL_DIR_PORT, PANEL_DIR_PIN, GPIO_PIN_SET);
+	  }
+
+
+      microDelay(openDelay*4);
+
+	  stopstep = stopstep + (int)(3200.0*(((double)angle/360.0)));
+	  stopstep = stopstep * 60;
+
+	      for(x=0; x<stopstep; x=x+1)
+	      {
+	        HAL_GPIO_WritePin(PANEL_STEP_PORT, PANEL_STEP_PIN, GPIO_PIN_SET);
+	        microDelay(openDelay);
+	        HAL_GPIO_WritePin(PANEL_STEP_PORT, PANEL_STEP_PIN, GPIO_PIN_RESET);
+	        microDelay(openDelay);
+	      }
+
+	  HAL_GPIO_WritePin(PANEL_EN_PORT, PANEL_EN_PIN, GPIO_PIN_RESET);
+	  HAL_GPIO_WritePin(PANEL_DIR_PORT, PANEL_DIR_PIN, GPIO_PIN_RESET);
+      HAL_GPIO_WritePin(PANEL_STEP_PORT, PANEL_STEP_PIN, GPIO_PIN_RESET);
+
+}
+
 
 
 void open_panel(int state){
 	if (state == 1){
-
-		HAL_GPIO_WritePin(PANEL_EN_PORT, PANEL_EN_PIN, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(PANEL_DIR_PORT, PANEL_DIR_PIN, GPIO_PIN_SET);
-
-        //UART_SendString("INITAL\r\n");
-
-	    microDelay(openDelay);
-	    microDelay(openDelay);
-
-		while(HAL_GPIO_ReadPin(PANEL_SW_CLOSE_PORT, PANEL_SW_CLOSE_PIN) == GPIO_PIN_SET){
-
-            //UART_SendString("LOOP\r\n");
-
-	        HAL_GPIO_WritePin(PANEL_STEP_PORT, PANEL_STEP_PIN, GPIO_PIN_SET);
-	        microDelay(openDelay);
-	        HAL_GPIO_WritePin(PANEL_STEP_PORT, PANEL_STEP_PIN, GPIO_PIN_RESET);
-	        microDelay(openDelay);
-
-		}
-
-        //UART_SendString("END\r\n");
-
-		HAL_GPIO_WritePin(PANEL_EN_PORT, PANEL_EN_PIN, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(PANEL_DIR_PORT, PANEL_DIR_PIN, GPIO_PIN_RESET);
-	    HAL_GPIO_WritePin(PANEL_STEP_PORT, PANEL_STEP_PIN, GPIO_PIN_RESET);
-
+		open_panel_angle(360);
 	}else if(state == 0){
 		HAL_GPIO_WritePin(PANEL_EN_PORT, PANEL_EN_PIN, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(PANEL_DIR_PORT, PANEL_DIR_PIN, GPIO_PIN_RESET);
 
-        //UART_SendString("INITAL\r\n");
 
 	    microDelay(openDelay);
 	    microDelay(openDelay);
 
 		while(HAL_GPIO_ReadPin(PANEL_SW_CLOSE_PORT, PANEL_SW_CLOSE_PIN) == GPIO_PIN_SET){
 
-            //UART_SendString("LOOP\r\n");
 
 	        HAL_GPIO_WritePin(PANEL_STEP_PORT, PANEL_STEP_PIN, GPIO_PIN_SET);
 	        microDelay(openDelay);
@@ -304,29 +363,24 @@ void open_panel(int state){
 
 		}
 
-        //UART_SendString("END\r\n");
 
 		HAL_GPIO_WritePin(PANEL_EN_PORT, PANEL_EN_PIN, GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(PANEL_DIR_PORT, PANEL_DIR_PIN, GPIO_PIN_RESET);
 	    HAL_GPIO_WritePin(PANEL_STEP_PORT, PANEL_STEP_PIN, GPIO_PIN_RESET);
-	}else{
-		/*if(HAL_GPIO_ReadPin(PANEL_SW_CLOSE_PORT, PANEL_SW_CLOSE_PIN) == GPIO_PIN_RESET){
 
-	        UART_SendString("LIMIT SWITCH RESET\r\n");
-		}
-		else if((HAL_GPIO_ReadPin(PANEL_SW_CLOSE_PORT, PANEL_SW_CLOSE_PIN) == GPIO_PIN_SET)){
-			UART_SendString("LIMIT SWITCH SET\r\n");
-		}
-		else{
-			 UART_SendString("UNKNOWN\r\n");
-		}*/
+
+	    current_panel_angle = 0;
+	    panel_angle_var = 0;
+
 	}
-
 }
 
 void clear_dust(void){
 	 HAL_GPIO_WritePin(DUST_PORT, DUST_PIN, GPIO_PIN_SET);
 	 HAL_GPIO_WritePin(DUST_PORT, DUST_PIN, GPIO_PIN_RESET);
+	 char uartBuffer[64];
+	 snprintf(uartBuffer, sizeof(uartBuffer), "FI:%d\r\n", 0);
+	 UART_SendString(uartBuffer);
 }
 
 
@@ -367,6 +421,7 @@ void hill_climb_for_optimal_tilt(void *argument) {
 		    	            char uartBuffer[64];
 		    	            snprintf(uartBuffer, sizeof(uartBuffer), "%i: %i, \r\n", i, variable_array[i]);
 		    	            UART_SendString(uartBuffer);
+		    	            break;
 	                	}
 
 	    	            improved = 0;
@@ -382,7 +437,11 @@ void hill_climb_for_optimal_tilt(void *argument) {
 	        }
 
 	        vTaskDelay(pdMS_TO_TICKS(3000));
+
 	    }
+    	char uartBuffer[64];
+        snprintf(uartBuffer, sizeof(uartBuffer), "FI:%d\r\n", 0);
+        UART_SendString(uartBuffer);
 
 	}
 
