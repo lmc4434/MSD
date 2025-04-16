@@ -5,10 +5,12 @@ import threading
 import math
 import time
 
+
 class DataVariable:
-    def __init__(self, initial_value = 0.0):
+    def __init__(self, initial_value=0.0):
         self.current_value = initial_value
         self.memory_value = 0.0
+
 
 # Global Variables
 voltage_var = DataVariable()
@@ -26,9 +28,6 @@ sent = 0
 in_admin_screen = False
 data_initialized = False
 
-
-
-
 root = tk.Tk()
 root.title("Psyche 2 Power Supply Control")
 root.geometry("900x750")
@@ -43,11 +42,13 @@ ser = serial.Serial('COM3', 9600, timeout=1)
 
 slider_update_timer = None
 
+
 def send_value(id: str, value: float):
     message = f"{id}:{value:.2f}\r"
     ser.write(message.encode())
     print(f"Sending: {message}")
     update_terminal(f"Sending: {message}")
+
 
 def on_slider_change(val):
     global slider_update_timer
@@ -111,13 +112,14 @@ def receive_data():
                     except Exception as e:
                         print(f"Error processing message: {e}")
 
+
 def blow_off_dust():
     update_terminal("Blowing off dust with compressed air...")
     send_value("CD", 1.0)
     tiltfinished.current_value = 1
 
-def toggle_panels():
 
+def toggle_panels():
     panel_open.current_value = 1.0 if panel_open.current_value == 0.0 else 0.0
     unfold_button.config(text="Close Panels" if panel_open.current_value else "Open Panels")
     update_terminal("Panels Opened." if panel_open.current_value else "Panels Closed.")
@@ -134,6 +136,7 @@ def toggle_mode():
     update_terminal(f"Switched to {'Autonomous' if mode.current_value else 'Manual'} Mode.")
     tiltfinished.current_value = 1
 
+
 def update_gui():
     if in_admin_screen:
         return
@@ -143,21 +146,31 @@ def update_gui():
     tilt_angle_display_label.config(text=f"{tilt_angle_display_var.current_value:.2f}°")
     update_tilt_indicator(tilt_angle_display_var.current_value)
 
-
     if tiltfinished.current_value == 1:
         tilt_slider.state(["disabled"])
         unfold_button.state(["disabled"])
         mode_button.state(["disabled"])
         compressed_air_button.state(["disabled"])
         solar_tracking_button.state(["disabled"])
-    else:
+    elif tiltfinished.current_value == 0:
         tilt_slider.state(["!disabled"])
         unfold_button.state(["!disabled"])
         mode_button.state(["!disabled"])
         compressed_air_button.state(["!disabled"])
         solar_tracking_button.state(["!disabled"])
+        if mode.current_value == 1:
+            tilt_slider.state(["disabled"])
+            unfold_button.state(["disabled"])
+            compressed_air_button.state(["disabled"])
+            solar_tracking_button.state(["disabled"])
+        elif mode.current_value == 0:
+            tilt_slider.state(["!disabled"])
+            unfold_button.state(["!disabled"])
+            compressed_air_button.state(["!disabled"])
+            solar_tracking_button.state(["!disabled"])
 
     root.after(1000, update_gui)
+
 
 def update_tilt_indicator(tilt_value):
     tilt_angle_display_canvas.delete("all")
@@ -189,10 +202,12 @@ def update_tilt_indicator(tilt_value):
     tilt_angle_display_canvas.create_oval(160, rover_y + 10, 180, rover_y + 30, fill="white")
     tilt_angle_display_canvas.create_oval(220, rover_y + 10, 240, rover_y + 30, fill="white")
 
+
 def run_solar_tracking():
     update_terminal("Solar tracking activated...")
     send_value("ST", 1.0)
     tiltfinished.current_value = 1
+
 
 def update_terminal(text):
     try:
@@ -200,6 +215,7 @@ def update_terminal(text):
         terminal_output.yview(tk.END)
     except:
         print(f"[Admin Log] {text}")
+
 
 def show_admin_login():
     def validate_password():
@@ -219,12 +235,14 @@ def show_admin_login():
     password_entry.pack(pady=5)
     tk.Button(login_window, text="Submit", command=validate_password).pack(pady=10)
 
+
 def update_admin_labels():
     if not in_admin_screen:
         return
     tilt_angle_label.config(text=f"Tilt Angle: {tilt_angle_var.current_value:.2f}")
     panel_angle_label.config(text=f"Panel Angle: {panel_angle_var.current_value:.2f}")
     root.after(1000, update_admin_labels)
+
 
 def show_admin_screen():
     global in_admin_screen
@@ -291,9 +309,9 @@ def show_admin_screen():
 
     ]
 
-
     for text, action in buttons:
         tk.Button(root, text=text, width=25, height=2, font=("Arial", 14), command=action).pack(pady=10)
+
 
 def generate_window():
     global in_admin_screen
@@ -304,22 +322,31 @@ def generate_window():
     for widget in root.winfo_children():
         widget.destroy()
 
-
-
-    ttk.Label(root, text="Solar Panel Voltage (V):", foreground="white", background="#1D1F21").grid(row=0, column=0, padx=20, pady=10, sticky="nsew")
-    voltage_display = ttk.Label(root, text=f"{voltage_var.current_value:.2f} V", font=("Arial", 16), foreground="cyan", background="#1D1F21")
+    ttk.Label(root, text="Solar Panel Voltage (V):", foreground="white", background="#1D1F21").grid(row=0, column=0,
+                                                                                                    padx=20, pady=10,
+                                                                                                    sticky="nsew")
+    voltage_display = ttk.Label(root, text=f"{voltage_var.current_value:.2f} V", font=("Arial", 16), foreground="cyan",
+                                background="#1D1F21")
     voltage_display.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
 
-    ttk.Label(root, text="Battery Percentage:", foreground="white", background="#1D1F21").grid(row=1, column=0, padx=20, pady=10, sticky="nsew")
-    battery_display = ttk.Label(root, text=f"{battery_var.current_value:.2f} %", font=("Arial", 16), foreground="cyan", background="#1D1F21")
+    ttk.Label(root, text="Battery Percentage:", foreground="white", background="#1D1F21").grid(row=1, column=0, padx=20,
+                                                                                               pady=10, sticky="nsew")
+    battery_display = ttk.Label(root, text=f"{battery_var.current_value:.2f} %", font=("Arial", 16), foreground="cyan",
+                                background="#1D1F21")
     battery_display.grid(row=1, column=1, padx=10, pady=10, sticky="nsew")
 
-    ttk.Label(root, text="Power Generation (W):", foreground="white", background="#1D1F21").grid(row=2, column=0, padx=20, pady=10, sticky="nsew")
-    power_display = ttk.Label(root, text=f"{voltage_var.current_value * 2.0:.2f} W", font=("Arial", 16), foreground="cyan", background="#1D1F21")
+    ttk.Label(root, text="Power Generation (W):", foreground="white", background="#1D1F21").grid(row=2, column=0,
+                                                                                                 padx=20, pady=10,
+                                                                                                 sticky="nsew")
+    power_display = ttk.Label(root, text=f"{voltage_var.current_value * 2.0:.2f} W", font=("Arial", 16),
+                              foreground="cyan", background="#1D1F21")
     power_display.grid(row=2, column=1, padx=10, pady=10, sticky="nsew")
 
-    ttk.Label(root, text="Tilt Angle (degrees):", foreground="white", background="#1D1F21").grid(row=3, column=0, padx=20, pady=10, sticky="nsew")
-    tilt_angle_display_label = ttk.Label(root, text=f"{tilt_angle_display_var.current_value:.2f}", font=("Arial", 16), foreground="cyan", background="#1D1F21")
+    ttk.Label(root, text="Tilt Angle (degrees):", foreground="white", background="#1D1F21").grid(row=3, column=0,
+                                                                                                 padx=20, pady=10,
+                                                                                                 sticky="nsew")
+    tilt_angle_display_label = ttk.Label(root, text=f"{tilt_angle_display_var.current_value:.2f}", font=("Arial", 16),
+                                         foreground="cyan", background="#1D1F21")
     tilt_angle_display_label.grid(row=3, column=1, padx=10, pady=10, sticky="nsew")
 
     global tilt_angle_display_canvas
@@ -332,15 +359,17 @@ def generate_window():
     compressed_air_button = ttk.Button(root, text="Activate Compressed Air", command=blow_off_dust, style="TButton")
     compressed_air_button.grid(row=5, column=0, columnspan=2, padx=20, pady=10, sticky="nsew")
 
-    unfold_button = ttk.Button(root, text="Open Panels" if not panel_open.current_value else "Close Panels", command=toggle_panels)
+    unfold_button = ttk.Button(root, text="Open Panels" if not panel_open.current_value else "Close Panels",
+                               command=toggle_panels)
     unfold_button.grid(row=5, column=2, padx=20, pady=10, sticky="nsew")
 
-    mode_button = ttk.Button(root, text="Switch to Manual Mode" if mode.current_value else "Switch to Autonomous Mode", command=toggle_mode, style="TButton")
+    mode_button = ttk.Button(root, text="Switch to Manual Mode" if mode.current_value else "Switch to Autonomous Mode",
+                             command=toggle_mode, style="TButton")
     mode_button.grid(row=6, column=0, columnspan=2, padx=20, pady=10, sticky="nsew")
 
     solar_tracking_button = ttk.Button(root, text="Run Solar Tracking", command=run_solar_tracking, style="TButton")
     solar_tracking_button.grid(row=6, column=2, padx=20, pady=10, sticky="nsew")
-    
+
     tilt_slider = ttk.Scale(root, from_=-22, to_=22, orient="horizontal")
     tilt_slider.grid(row=9, column=0, columnspan=3, padx=20, pady=10, sticky="nsew")
 
@@ -350,8 +379,8 @@ def generate_window():
     # Delay binding the command to avoid triggering on startup
     root.after(100, lambda: tilt_slider.configure(command=on_slider_change))
 
-
-    ttk.Button(root, text="ADMIN", command=show_admin_login, style="TButton").grid(row=0, column=2, padx=10, pady=10, sticky="ne")
+    ttk.Button(root, text="ADMIN", command=show_admin_login, style="TButton").grid(row=0, column=2, padx=10, pady=10,
+                                                                                   sticky="ne")
 
     terminal_output = tk.Text(root, height=5, width=90, bg="#1D1F21", fg="cyan", font=("Courier", 10), bd=0)
     terminal_output.grid(row=10, column=0, columnspan=3, padx=20, pady=10, sticky="nsew")
@@ -359,13 +388,16 @@ def generate_window():
 
     update_tilt_indicator(tilt_angle_display_var.current_value)
 
+
 def start_receive_thread():
     receive_thread = threading.Thread(target=receive_data, daemon=True)
     receive_thread.start()
 
+
 def start_send_thread(id: str, value: float):
     send_thread = threading.Thread(target=send_value, args=(id, value), daemon=True)
     send_thread.start()
+
 
 if __name__ == "__main__":
     generate_window()
