@@ -240,7 +240,9 @@ def show_admin_screen():
         ("Tilt Right ➡️", manual_tilt_right),
         ("Jog Panels Open", lambda: [set_panel_open(True)]),
         ("Jog Panels Closed", lambda: [set_panel_open(False)]),
-        ("Return to Main Screen", lambda: [generate_window(), update_gui()]),
+        ("Sync Microcontroller and GUI", lambda: send_value("SU", 0.0)),
+        ("Return to Main Screen", lambda: [generate_window(), update_gui()])
+
     ]
 
 
