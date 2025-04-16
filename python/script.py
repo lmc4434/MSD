@@ -6,7 +6,7 @@ import math
 import time
 
 class DataVariable:
-    def __init__(self, initial_value=0.0):
+    def __init__(self, initial_value = 0.0):
         self.current_value = initial_value
         self.memory_value = 0.0
 
@@ -20,6 +20,11 @@ mode = DataVariable(initial_value=0.0)
 power_generation = DataVariable()
 tiltfinished = DataVariable()
 sent = 0
+in_admin_screen = False
+data_initialized = False
+
+
+
 
 root = tk.Tk()
 root.title("Psyche 2 Power Supply Control")
@@ -75,6 +80,11 @@ def receive_data():
                             tilt_angle_var.current_value = value
                             tilt_angle_display_var.current_value = value
                             update_terminal(f"Tilt Angle Updated: {value:.2f}°")
+                        global data_initialized
+                        if not data_initialized:
+                            data_initialized = True
+                            root.after(100, lambda: tilt_slider.set(tilt_angle_var.current_value))
+
                         elif id == "CM":
                             mode.current_value = value
                             update_terminal(f"Mode Changed: {'Autonomous' if mode.current_value else 'Manual'}")
@@ -88,8 +98,6 @@ def receive_data():
                             print("Clearing Dust Run")
                         elif id == "FI":
                             tiltfinished.current_value = 0
-                        else:
-                            update_terminal(f"Unknown ID: {id}")
 
                     except ValueError:
                         print("Invalid value format in message")
@@ -115,7 +123,8 @@ def toggle_mode():
     update_terminal(f"Switched to {'Autonomous' if mode.current_value else 'Manual'} Mode.")
 
 def update_gui():
-
+    if in_admin_screen:
+        return
     voltage_display.config(text=f"{voltage_var.current_value:.2f} V")
     battery_display.config(text=f"{battery_var.current_value:.2f} %")
     power_display.config(text=f"{voltage_var.current_value * 2.0:.2f} W")
@@ -165,8 +174,11 @@ def run_solar_tracking():
     send_value("ST", 1.0)
 
 def update_terminal(text):
-    terminal_output.insert(tk.END, text + "\n")
-    terminal_output.yview(tk.END)
+    try:
+        terminal_output.insert(tk.END, text + "\n")
+        terminal_output.yview(tk.END)
+    except:
+        print(f"[Admin Log] {text}")
 
 def show_admin_login():
     def validate_password():
@@ -186,15 +198,24 @@ def show_admin_login():
     password_entry.pack(pady=5)
     tk.Button(login_window, text="Submit", command=validate_password).pack(pady=10)
 
+
 def show_admin_screen():
+    global in_admin_screen
+    in_admin_screen = True
+
     for widget in root.winfo_children():
         widget.destroy()
 
     tk.Label(root, text="ADMIN PANEL", font=("Arial", 20, "bold"), fg="red", bg="#1D1F21").pack(pady=20)
 
     def graceful_shutdown():
+        tilt_angle_display_var.current_value = 0
+        tilt_angle_var.current_value = 0
+        panel_open.current_value = 0
+
         send_value("PO", 0)
-        send_value("TA", 0)
+        root.after(100, lambda: send_value("TA", 0))
+        update_terminal("Graceful shutdown initiated...")
 
     def manual_tilt_left():
         new_angle = max(-22, tilt_angle_var.current_value - 1)
@@ -208,19 +229,27 @@ def show_admin_screen():
         tilt_angle_display_var.current_value = new_angle
         send_value("TA", new_angle)
 
-    buttons = [
+    def set_panel_open(open_state):
+        panel_open.current_value = 1.0 if open_state else 0.0
+        send_value("PO", 180 if open_state else 0)
+        update_terminal(f"Panels {'Opened' if open_state else 'Closed'} via Jog")
 
+    buttons = [
         ("Graceful Shutdown", graceful_shutdown),
         ("Tilt Left ⬅️", manual_tilt_left),
         ("Tilt Right ➡️", manual_tilt_right),
+        ("Jog Panels Open", lambda: [set_panel_open(True)]),
+        ("Jog Panels Closed", lambda: [set_panel_open(False)]),
         ("Return to Main Screen", lambda: [generate_window(), update_gui()]),
-
     ]
+
 
     for text, action in buttons:
         tk.Button(root, text=text, width=25, height=2, font=("Arial", 14), command=action).pack(pady=10)
 
 def generate_window():
+    global in_admin_screen
+    in_admin_screen = False
     global voltage_display, battery_display, tilt_angle_display_label, unfold_button, mode_button, power_display
     global tilt_angle_display_canvas, terminal_output, tilt_slider, tiltfinished
 
@@ -261,9 +290,15 @@ def generate_window():
 
     ttk.Button(root, text="Run Solar Tracking", command=run_solar_tracking, style="TButton").grid(row=6, column=2, padx=20, pady=10, sticky="nsew")
 
-    tilt_slider = ttk.Scale(root, from_=-22, to_=22, orient="horizontal", command=on_slider_change)
+    tilt_slider = ttk.Scale(root, from_=-22, to_=22, orient="horizontal")
     tilt_slider.grid(row=9, column=0, columnspan=3, padx=20, pady=10, sticky="nsew")
+
+    # Set the slider visually to match the tilt angle variable without triggering send
     tilt_slider.set(tilt_angle_var.current_value)
+
+    # Delay binding the command to avoid triggering on startup
+    root.after(100, lambda: tilt_slider.configure(command=on_slider_change))
+
 
     ttk.Button(root, text="ADMIN", command=show_admin_login, style="TButton").grid(row=0, column=2, padx=10, pady=10, sticky="ne")
 
@@ -285,4 +320,5 @@ if __name__ == "__main__":
     generate_window()
     start_receive_thread()
     update_gui()
+    send_value("SU", 0.0)
     root.mainloop()
