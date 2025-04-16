@@ -94,7 +94,7 @@ def receive_data():
                         elif id == "PG":
                             power_generation.current_value = value
                         elif id == "PO":
-                            print(panel_open.current_value)
+                            panel_open.current_value = value
                         elif id == "ST":
                             print("Solar Tracking Run")
                         elif id == "CD":
@@ -105,7 +105,7 @@ def receive_data():
                             openfinished.current_value = 0
                         elif id == "PA":
                             panel_angle_var.current_value = value
-
+                            update_terminal(f"Panel Angle Updated: {value:.2f}°")
                     except ValueError:
                         print("Invalid value format in message")
                     except Exception as e:
@@ -114,6 +114,7 @@ def receive_data():
 def blow_off_dust():
     update_terminal("Blowing off dust with compressed air...")
     send_value("CD", 1.0)
+    tiltfinished.current_value = 1
 
 def toggle_panels():
 
@@ -121,6 +122,7 @@ def toggle_panels():
     unfold_button.config(text="Close Panels" if panel_open.current_value else "Open Panels")
     update_terminal("Panels Opened." if panel_open.current_value else "Panels Closed.")
     send_value("PO", panel_open.current_value)
+    tiltfinished.current_value = 1
 
 
 def toggle_mode():
@@ -130,6 +132,7 @@ def toggle_mode():
     )
     send_value("CM", mode.current_value)
     update_terminal(f"Switched to {'Autonomous' if mode.current_value else 'Manual'} Mode.")
+    tiltfinished.current_value = 1
 
 def update_gui():
     if in_admin_screen:
@@ -143,8 +146,16 @@ def update_gui():
 
     if tiltfinished.current_value == 1:
         tilt_slider.state(["disabled"])
+        unfold_button.state(["disabled"])
+        mode_button.state(["disabled"])
+        compressed_air_button.state(["disabled"])
+        solar_tracking_button.state(["disabled"])
     else:
         tilt_slider.state(["!disabled"])
+        unfold_button.state(["!disabled"])
+        mode_button.state(["!disabled"])
+        compressed_air_button.state(["!disabled"])
+        solar_tracking_button.state(["!disabled"])
 
     root.after(1000, update_gui)
 
@@ -181,6 +192,7 @@ def update_tilt_indicator(tilt_value):
 def run_solar_tracking():
     update_terminal("Solar tracking activated...")
     send_value("ST", 1.0)
+    tiltfinished.current_value = 1
 
 def update_terminal(text):
     try:
@@ -286,7 +298,7 @@ def show_admin_screen():
 def generate_window():
     global in_admin_screen
     in_admin_screen = False
-    global voltage_display, battery_display, tilt_angle_display_label, unfold_button, mode_button, power_display
+    global voltage_display, battery_display, tilt_angle_display_label, unfold_button, mode_button, power_display, compressed_air_button, solar_tracking_button
     global tilt_angle_display_canvas, terminal_output, tilt_slider, tiltfinished
 
     for widget in root.winfo_children():
@@ -317,15 +329,18 @@ def generate_window():
     button_style = ttk.Style()
     button_style.configure("TButton", font=("Arial", 14, "bold"))
 
-    ttk.Button(root, text="Activate Compressed Air", command=blow_off_dust, style="TButton").grid(row=5, column=0, columnspan=2, padx=20, pady=10, sticky="nsew")
+    compressed_air_button = ttk.Button(root, text="Activate Compressed Air", command=blow_off_dust, style="TButton")
+    compressed_air_button.grid(row=5, column=0, columnspan=2, padx=20, pady=10, sticky="nsew")
+
     unfold_button = ttk.Button(root, text="Open Panels" if not panel_open.current_value else "Close Panels", command=toggle_panels)
     unfold_button.grid(row=5, column=2, padx=20, pady=10, sticky="nsew")
 
     mode_button = ttk.Button(root, text="Switch to Manual Mode" if mode.current_value else "Switch to Autonomous Mode", command=toggle_mode, style="TButton")
     mode_button.grid(row=6, column=0, columnspan=2, padx=20, pady=10, sticky="nsew")
 
-    ttk.Button(root, text="Run Solar Tracking", command=run_solar_tracking, style="TButton").grid(row=6, column=2, padx=20, pady=10, sticky="nsew")
-
+    solar_tracking_button = ttk.Button(root, text="Run Solar Tracking", command=run_solar_tracking, style="TButton")
+    solar_tracking_button.grid(row=6, column=2, padx=20, pady=10, sticky="nsew")
+    
     tilt_slider = ttk.Scale(root, from_=-22, to_=22, orient="horizontal")
     tilt_slider.grid(row=9, column=0, columnspan=3, padx=20, pady=10, sticky="nsew")
 
